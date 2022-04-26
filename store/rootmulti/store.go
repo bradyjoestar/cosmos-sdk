@@ -2,6 +2,7 @@ package rootmulti
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math"
@@ -389,7 +390,6 @@ func (rs *Store) Commit() types.CommitID {
 		// This case means that no commit has been made in the store, we
 		// start from initialVersion.
 		version = rs.initialVersion
-
 	} else {
 		// This case can means two things:
 		// - either there was already a previous commit in the store, in which
@@ -398,6 +398,34 @@ func (rs *Store) Commit() types.CommitID {
 		// in which case we start at version 1.
 		previousHeight = rs.lastCommitInfo.GetVersion()
 		version = previousHeight + 1
+	}
+
+	fmt.Println("--------wenbin test data-------------")
+	if version == 40 {
+		for k, v := range rs.stores {
+			if strings.Compare("bank", k.Name()) == 0 {
+				var deletedKey []byte
+
+				itr := v.Iterator(nil, nil)
+				defer itr.Close()
+
+				for ; itr.Valid(); itr.Next() {
+					keyBytes, valueBytes := itr.Key(), itr.Value()
+					key := hex.EncodeToString(keyBytes)
+					value := hex.EncodeToString(valueBytes)
+
+					fmt.Println(key)
+					fmt.Println(value)
+
+					if len(keyBytes) != 0 {
+						fmt.Println("----------copy---------------")
+						deletedKey = keyBytes
+					}
+				}
+				fmt.Println(hex.EncodeToString(deletedKey))
+				v.Set(deletedKey, deletedKey)
+			}
+		}
 	}
 
 	rs.lastCommitInfo = commitStores(version, rs.stores)
