@@ -109,6 +109,10 @@ func (dfd DeductFeeDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bo
 		return ctx, sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "fee payer address: %s does not exist", deductFeesFrom)
 	}
 
+	fmt.Println("---------------------auth/fee/anteHandler begin-------------------------")
+	fmt.Printf("feeTx.GetFee(): %s, isSimulate: %t, isCheckTx:%t, isRecheckTx:%t\n",
+		feeTx.GetFee().String(), simulate, ctx.IsCheckTx(), ctx.IsReCheckTx())
+
 	// deduct the fees
 	if !feeTx.GetFee().IsZero() {
 		err = DeductFees(dfd.bankKeeper, ctx, deductFeesFromAcc, feeTx.GetFee())

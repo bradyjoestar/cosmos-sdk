@@ -2,6 +2,7 @@ package mock
 
 import (
 	"io"
+	"math/big"
 
 	protoio "github.com/gogo/protobuf/io"
 	dbm "github.com/tendermint/tm-db"
@@ -204,4 +205,8 @@ func (kv kvStore) ReverseSubspaceIterator(prefix []byte) sdk.Iterator {
 
 func NewCommitMultiStore() sdk.CommitMultiStore {
 	return multiStore{kv: make(map[sdk.StoreKey]kvStore)}
+}
+
+func (ms multiStore) QueryBankBalanceValue() (*big.Int, *big.Int) {
+	panic("not implemented")
 }

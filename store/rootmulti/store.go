@@ -2,9 +2,14 @@ package rootmulti
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"io"
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -891,6 +896,40 @@ func (rs *Store) buildCommitInfo(version int64) *types.CommitInfo {
 		Version:    version,
 		StoreInfos: storeInfos,
 	}
+}
+
+func (rs *Store) QueryBankBalanceValue() (*big.Int, *big.Int) {
+	ckvstore := rs.GetCommitKVStore(sdk.NewKVStoreKey("bank"))
+
+	itr := ckvstore.Iterator(nil, nil)
+	defer itr.Close()
+
+	var feecollecter *big.Int
+	var distribution *big.Int
+
+	for ; itr.Valid(); itr.Next() {
+		k, v := itr.Key(), itr.Value()
+		key := hex.EncodeToString(k)
+		var balance sdk.Coin
+		interfaceRegistry := codectypes.NewInterfaceRegistry()
+		marshaler := codec.NewProtoCodec(interfaceRegistry)
+
+		if strings.Compare(key, "021493354845030274cd4bf1686abd60ab28ec52e1a76174656c65") == 0 {
+			value := hex.EncodeToString(v)
+			bz, _ := hex.DecodeString(value)
+			marshaler.MustUnmarshal(bz, &balance)
+			distribution = balance.Amount.BigInt()
+			fmt.Printf("distribution: %s,  balance:%s atele\n", "teleport1jv65s3grqf6v6jl3dp4t6c9t9rk99cd82z0duh", balance.Amount)
+		}
+		if strings.Compare(key, "0214f1829676db577682e944fc3493d451b67ff3e29f6174656c65") == 0 {
+			value := hex.EncodeToString(v)
+			bz, _ := hex.DecodeString(value)
+			marshaler.MustUnmarshal(bz, &balance)
+			feecollecter = balance.Amount.BigInt()
+			fmt.Printf("feecollector: %s,  balance:%s  atele\n", "teleport17xpfvakm2amg962yls6f84z3kell8c5layg374", balance.Amount)
+		}
+	}
+	return distribution, feecollecter
 }
 
 // RollbackToVersion delete the versions after `target` and update the latest version.

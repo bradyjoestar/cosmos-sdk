@@ -309,6 +309,10 @@ func (k BaseKeeper) SetDenomMetaData(ctx sdk.Context, denomMetaData types.Metada
 func (k BaseKeeper) SendCoinsFromModuleToAccount(
 	ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins,
 ) error {
+	fmt.Println("---------------sendCoinsFromModuleToModule--------------------------")
+	fmt.Printf("from module: %s\n", senderModule)
+	fmt.Printf("recipiend account: %s\n", recipientAddr)
+	fmt.Println(amt)
 
 	senderAddr := k.ak.GetModuleAddress(senderModule)
 	if senderAddr == nil {
@@ -318,8 +322,39 @@ func (k BaseKeeper) SendCoinsFromModuleToAccount(
 	if k.BlockedAddr(recipientAddr) {
 		return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "%s is not allowed to receive funds", recipientAddr)
 	}
+	for _, balance := range amt {
+		preSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		preReceivBalance := k.GetBalance(ctx, recipientAddr, balance.Denom)
 
-	return k.SendCoins(ctx, senderAddr, recipientAddr, amt)
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, recipientAddr.String(), preReceivBalance)
+		} else {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, recipientAddr.String(), preReceivBalance)
+		}
+	}
+
+	err := k.SendCoins(ctx, senderAddr, recipientAddr, amt)
+
+	for _, balance := range amt {
+		newSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		newReceiverBalance := k.GetBalance(ctx, recipientAddr, balance.Denom)
+
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, recipientAddr.String(), newReceiverBalance)
+		} else {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, recipientAddr.String(), newReceiverBalance)
+		}
+	}
+
+	return err
 }
 
 // SendCoinsFromModuleToModule transfers coins from a ModuleAccount to another.
@@ -327,8 +362,13 @@ func (k BaseKeeper) SendCoinsFromModuleToAccount(
 func (k BaseKeeper) SendCoinsFromModuleToModule(
 	ctx sdk.Context, senderModule, recipientModule string, amt sdk.Coins,
 ) error {
+	fmt.Println("---------------sendCoinsFromModuleToModule--------------------------")
+	fmt.Printf("from module: %s\n", senderModule)
+	fmt.Printf("recipiend module: %s\n", recipientModule)
+	fmt.Println(amt)
 
 	senderAddr := k.ak.GetModuleAddress(senderModule)
+	receiverAddr := k.ak.GetModuleAddress(recipientModule)
 	if senderAddr == nil {
 		panic(sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "module account %s does not exist", senderModule))
 	}
@@ -337,8 +377,39 @@ func (k BaseKeeper) SendCoinsFromModuleToModule(
 	if recipientAcc == nil {
 		panic(sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "module account %s does not exist", recipientModule))
 	}
+	for _, balance := range amt {
+		preSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		preReceivBalance := k.GetBalance(ctx, receiverAddr, balance.Denom)
 
-	return k.SendCoins(ctx, senderAddr, recipientAcc.GetAddress(), amt)
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, receiverAddr.String(), preReceivBalance)
+		} else {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, receiverAddr.String(), preReceivBalance)
+		}
+	}
+
+	err := k.SendCoins(ctx, senderAddr, recipientAcc.GetAddress(), amt)
+
+	for _, balance := range amt {
+		newSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		newReceiverBalance := k.GetBalance(ctx, receiverAddr, balance.Denom)
+
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, receiverAddr.String(), newReceiverBalance)
+		} else {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, receiverAddr.String(), newReceiverBalance)
+		}
+	}
+
+	return err
 }
 
 // SendCoinsFromAccountToModule transfers coins from an AccAddress to a ModuleAccount.
@@ -346,13 +417,50 @@ func (k BaseKeeper) SendCoinsFromModuleToModule(
 func (k BaseKeeper) SendCoinsFromAccountToModule(
 	ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins,
 ) error {
+	fmt.Println("---------------SendCoinsFromAccountToModule--------------------------")
+	fmt.Printf("from account: %s\n", senderAddr)
+	fmt.Printf("recipiend module: %s\n", recipientModule)
+	fmt.Println(amt)
 
 	recipientAcc := k.ak.GetModuleAccount(ctx, recipientModule)
+	receiverAddr := k.ak.GetModuleAddress(recipientModule)
+
 	if recipientAcc == nil {
 		panic(sdkerrors.Wrapf(sdkerrors.ErrUnknownAddress, "module account %s does not exist", recipientModule))
 	}
+	for _, balance := range amt {
+		preSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		preReceivBalance := k.GetBalance(ctx, receiverAddr, balance.Denom)
 
-	return k.SendCoins(ctx, senderAddr, recipientAcc.GetAddress(), amt)
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, receiverAddr.String(), preReceivBalance)
+		} else {
+			fmt.Printf("SENDCOINS BEFORE! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, preBalance:%s\n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), preSenderBalance, receiverAddr.String(), preReceivBalance)
+		}
+	}
+
+	err := k.SendCoins(ctx, senderAddr, recipientAcc.GetAddress(), amt)
+
+	for _, balance := range amt {
+		newSenderBalance := k.GetBalance(ctx, senderAddr, balance.Denom)
+		newReceiverBalance := k.GetBalance(ctx, receiverAddr, balance.Denom)
+
+		if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILL CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, receiverAddr.String(), newReceiverBalance)
+		} else {
+			fmt.Printf("SENDCOINS AFTER ! THIS WILLNOT CHANGE THE DELIVERSTATE! \nsender addr: %s, newBalance:%s \n"+
+				"receiver addr :%s, receiver balance: %s\n",
+				senderAddr.String(), newSenderBalance, receiverAddr.String(), newReceiverBalance)
+		}
+	}
+
+	return err
 }
 
 // DelegateCoinsFromAccountToModule delegates coins and transfers them from a

@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -136,6 +137,8 @@ func (k BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAd
 		return err
 	}
 
+	fmt.Printf("isCheckTx: %t, isRecheckTx: %t \n", ctx.IsCheckTx(), ctx.IsReCheckTx())
+
 	err = k.addCoins(ctx, toAddr, amt)
 	if err != nil {
 		return err
@@ -254,6 +257,15 @@ func (k BaseSendKeeper) setBalance(ctx sdk.Context, addr sdk.AccAddress, balance
 	}
 
 	accountStore := k.getAccountStore(ctx, addr)
+	preBalance := k.GetBalance(ctx, addr, balance.Denom)
+
+	if !ctx.IsCheckTx() && !ctx.IsReCheckTx() {
+		fmt.Printf("SETBALANCE BEGIN! THIS WILL CHANGE THE DELIVERSTATE! addr: %s, preBalance: %s, newBalance:%s \n",
+			addr.String(), preBalance, balance)
+	} else {
+		fmt.Printf("SETBALANCE BEGIN! THIS WILLNOT CHANGE THE DELIVERSTATE! addr: %s, preBalance: %s, newBalance:%s \n",
+			addr.String(), preBalance, balance)
+	}
 
 	// Bank invariants require to not store zero balances.
 	if balance.IsZero() {

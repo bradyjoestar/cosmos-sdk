@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstrings "github.com/tendermint/tendermint/libs/strings"
@@ -191,6 +192,8 @@ type CommitMultiStore interface {
 
 	// SetIAVLCacheSize sets the cache size of the IAVL tree.
 	SetIAVLCacheSize(size int)
+
+	QueryBankBalanceValue() (*big.Int, *big.Int)
 }
 
 //---------subsp-------------------------------

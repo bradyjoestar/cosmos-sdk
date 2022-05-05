@@ -1,6 +1,8 @@
 package baseapp
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -637,6 +639,23 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 		return sdk.GasInfo{}, nil, nil, err
 	}
 
+	var hashBytes []byte
+	for _, v := range sha256.Sum256(txBytes) {
+		hashBytes = append(hashBytes, v)
+	}
+	fmt.Println("---------------runTx--------------------------")
+	var modeStr string
+	if mode == runTxModeDeliver {
+		modeStr = "deliver"
+	} else if mode == runTxModeReCheck {
+		modeStr = "recheck"
+	} else if mode == runTxModeCheck {
+		modeStr = "check"
+	} else if mode == runTxModeSimulate {
+		modeStr = "simulate"
+	}
+	fmt.Printf("mode: %s, runtx hash: %s\n", modeStr, hex.EncodeToString(hashBytes))
+
 	msgs := tx.GetMsgs()
 	if err := validateBasicTxMsgs(msgs); err != nil {
 		return sdk.GasInfo{}, nil, nil, err
@@ -702,6 +721,9 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 			result.Events = append(anteEvents, result.Events...)
 		}
 	}
+	fmt.Println("--------------gasInfo begin---------------------")
+	fmt.Println(gInfo)
+	fmt.Println("--------------gasInfo begin---------------------")
 
 	return gInfo, result, anteEvents, err
 }

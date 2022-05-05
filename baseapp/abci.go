@@ -206,6 +206,8 @@ func (app *BaseApp) EndBlock(req abci.RequestEndBlock) (res abci.ResponseEndBloc
 	if app.deliverState.ms.TracingEnabled() {
 		app.deliverState.ms = app.deliverState.ms.SetTracingContext(nil).(sdk.CacheMultiStore)
 	}
+	fmt.Println("----------end block before endBlocker-------------------")
+	app.cms.QueryBankBalanceValue()
 
 	if app.endBlocker != nil {
 		res = app.endBlocker(app.deliverState.ctx, req)
@@ -215,6 +217,9 @@ func (app *BaseApp) EndBlock(req abci.RequestEndBlock) (res abci.ResponseEndBloc
 	if cp := app.GetConsensusParams(app.deliverState.ctx); cp != nil {
 		res.ConsensusParamUpdates = cp
 	}
+
+	fmt.Println("----------end block before endBlocker-------------------")
+	app.cms.QueryBankBalanceValue()
 
 	return res
 }
@@ -272,12 +277,14 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		telemetry.SetGauge(float32(gInfo.GasUsed), "tx", "gas", "used")
 		telemetry.SetGauge(float32(gInfo.GasWanted), "tx", "gas", "wanted")
 	}()
+	fmt.Println("----------deliverTx before runTx-------------------")
 
 	gInfo, result, anteEvents, err := app.runTx(runTxModeDeliver, req.Tx)
 	if err != nil {
 		resultStr = "failed"
 		return sdkerrors.ResponseDeliverTxWithEvents(err, gInfo.GasWanted, gInfo.GasUsed, anteEvents, app.trace)
 	}
+	fmt.Println("----------deliverTx after runTx-------------------")
 
 	return abci.ResponseDeliverTx{
 		GasWanted: int64(gInfo.GasWanted), // TODO: Should type accept unsigned ints?
@@ -297,6 +304,11 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 // height.
 func (app *BaseApp) Commit() (res abci.ResponseCommit) {
 	defer telemetry.MeasureSince(time.Now(), "abci", "commit")
+
+	fmt.Println("----------commit before ms.write-------------------")
+	app.cms.QueryBankBalanceValue()
+
+	fmt.Printf("----------commit before ms.write, lastBlockHeight: %d-------------------\n", app.LastBlockHeight())
 
 	header := app.deliverState.ctx.BlockHeader()
 	retainHeight := app.GetBlockRetentionHeight(header.Height)
@@ -338,6 +350,8 @@ func (app *BaseApp) Commit() (res abci.ResponseCommit) {
 	if app.snapshotInterval > 0 && uint64(header.Height)%app.snapshotInterval == 0 {
 		go app.snapshot(header.Height)
 	}
+	fmt.Printf("----------commit after ms.write, lastBlockHeight: %d-------------------\n", app.LastBlockHeight())
+	app.cms.QueryBankBalanceValue()
 
 	return abci.ResponseCommit{
 		Data:         commitID.Hash,
