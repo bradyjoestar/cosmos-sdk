@@ -444,6 +444,13 @@ func (rs *Store) Commit() types.CommitID {
 		}
 	}
 
+	fmt.Println("------------prunestores when commiting begin------------------")
+	fmt.Println(rs.pruningOpts.Interval)
+	fmt.Println(version)
+	fmt.Println(rs.pruneHeights)
+	fmt.Println(rs.pruningOpts.KeepRecent)
+	fmt.Println(previousHeight)
+	fmt.Println("------------prunestores when commiting end  ------------------")
 	// batch prune if the current height is a pruning interval height
 	if rs.pruningOpts.Interval > 0 && version%int64(rs.pruningOpts.Interval) == 0 {
 		rs.pruneStores()
@@ -479,6 +486,9 @@ func (rs *Store) pruneStores() {
 	}
 
 	rs.pruneHeights = make([]int64, 0)
+	fmt.Println("-------------rs pruneHeights begin-----------------------")
+	fmt.Println(rs.pruneHeights)
+	fmt.Println("-------------rs pruneHeights end  -----------------------")
 }
 
 // CacheWrap implements CacheWrapper/Store/CommitStore.
