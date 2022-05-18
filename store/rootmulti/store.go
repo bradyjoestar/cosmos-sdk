@@ -411,7 +411,7 @@ func (rs *Store) Commit() types.CommitID {
 	if version == 40 {
 		for k, v := range rs.stores {
 			fmt.Println(k.Name())
-			if strings.Compare("bank", k.Name()) == 0 {
+			if strings.Compare("xibc", k.Name()) == 0 {
 				var deletedKey []byte
 
 				itr := v.Iterator(nil, nil)
