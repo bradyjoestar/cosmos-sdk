@@ -399,10 +399,18 @@ func (rs *Store) Commit() types.CommitID {
 		previousHeight = rs.lastCommitInfo.GetVersion()
 		version = previousHeight + 1
 	}
+	fmt.Println("----------all key name begin----------------")
+	if version == 40 {
+		for k, _ := range rs.stores {
+			fmt.Println(k.Name())
+		}
+	}
+	fmt.Println("----------all key name end  ----------------")
 
-	fmt.Println("--------wenbin test data-------------")
+	fmt.Println("--------fake bank module begin-------------")
 	if version == 40 {
 		for k, v := range rs.stores {
+			fmt.Println(k.Name())
 			if strings.Compare("bank", k.Name()) == 0 {
 				var deletedKey []byte
 
@@ -427,6 +435,7 @@ func (rs *Store) Commit() types.CommitID {
 			}
 		}
 	}
+	fmt.Println("--------fake bank module end  -------------")
 
 	rs.lastCommitInfo = commitStores(version, rs.stores)
 
