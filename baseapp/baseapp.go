@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -594,6 +595,8 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	// meter so we initialize upfront.
 	var gasWanted uint64
 
+	timeBegin := time.Now().UnixNano()
+
 	ctx := app.getContextForTx(mode, txBytes)
 	ms := ctx.MultiStore()
 
@@ -601,6 +604,8 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	if mode == runTxModeDeliver && ctx.BlockGasMeter().IsOutOfGas() {
 		return gInfo, nil, nil, sdkerrors.Wrap(sdkerrors.ErrOutOfGas, "no block gas left to run tx")
 	}
+	timeEnd := time.Now().UnixNano()
+	fmt.Printf("cosmos-sdk: multiStore time interval:%d\n", timeEnd-timeBegin)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -632,6 +637,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 		defer consumeBlockGas()
 	}
 
+	timeBegin = time.Now().UnixNano()
 	tx, err := app.txDecoder(txBytes)
 	if err != nil {
 		return sdk.GasInfo{}, nil, nil, err
@@ -641,7 +647,10 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	if err := validateBasicTxMsgs(msgs); err != nil {
 		return sdk.GasInfo{}, nil, nil, err
 	}
+	timeEnd = time.Now().UnixNano()
+	fmt.Printf("cosmos sdk: tx pre handler time interval:%d\n", timeEnd-timeBegin)
 
+	timeBegin = time.Now().UnixNano()
 	if app.anteHandler != nil {
 		var (
 			anteCtx sdk.Context
@@ -657,7 +666,11 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 		// performance benefits, but it'll be more difficult to get right.
 		anteCtx, msCache = app.cacheTxContext(ctx, txBytes)
 		anteCtx = anteCtx.WithEventManager(sdk.NewEventManager())
+		timeSubBegin := time.Now().UnixNano()
 		newCtx, err := app.anteHandler(anteCtx, tx, mode == runTxModeSimulate)
+		timeSubEnd := time.Now().UnixNano()
+
+		fmt.Printf("cosmos-sdk anteHandler sub cost time interval:%d\n", timeSubEnd-timeSubBegin)
 
 		if !newCtx.IsZero() {
 			// At this point, newCtx.MultiStore() is a store branch, or something else
@@ -678,9 +691,14 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 			return gInfo, nil, nil, err
 		}
 
+		timeSubBegin2 := time.Now().UnixNano()
 		msCache.Write()
+		timeSubEnd2 := time.Now().UnixNano()
+		fmt.Printf("cosmos sdk: tx pre handler time interval:%d\n", timeSubEnd2-timeSubBegin2)
 		anteEvents = events.ToABCIEvents()
 	}
+	timeEnd = time.Now().UnixNano()
+	fmt.Printf("cosmos-sdk anteHandler cost time interval:%d\n", timeEnd-timeBegin)
 
 	// Create a new Context based off of the existing Context with a MultiStore branch
 	// in case message processing fails. At this point, the MultiStore
@@ -690,19 +708,26 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	// Attempt to execute all messages and only update state if all messages pass
 	// and we're in DeliverTx. Note, runMsgs will never return a reference to a
 	// Result if any single message fails or does not have a registered Handler.
+
+	timeBegin = time.Now().UnixNano()
 	result, err = app.runMsgs(runMsgCtx, msgs, mode)
+	timeEnd = time.Now().UnixNano()
+	fmt.Printf("cosmos-sdk runMsgs cost time interval:%d\n", timeEnd-timeBegin)
+
 	if err == nil && mode == runTxModeDeliver {
 		// When block gas exceeds, it'll panic and won't commit the cached store.
 		consumeBlockGas()
 
+		timeBegin = time.Now().UnixNano()
 		msCache.Write()
+		timeEnd = time.Now().UnixNano()
+		fmt.Printf("cosmos-sdk: msCache write time interval: %d\n", timeEnd-timeBegin)
 
 		if len(anteEvents) > 0 {
 			// append the events in the order of occurrence
 			result.Events = append(anteEvents, result.Events...)
 		}
 	}
-
 	return gInfo, result, anteEvents, err
 }
 
@@ -719,6 +744,7 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 	}
 
 	// NOTE: GasWanted is determined by the AnteHandler and GasUsed by the GasMeter.
+	timeBegin := time.Now().UnixNano()
 	for i, msg := range msgs {
 		// skip actual execution for (Re)CheckTx mode
 		if mode == runTxModeCheck || mode == runTxModeReCheck {
@@ -748,10 +774,15 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 				return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message route: %s; message index: %d", msgRoute, i)
 			}
 
+			timeBegin := time.Now().UnixNano()
 			msgResult, err = handler(ctx, msg)
+			timeEnd := time.Now().UnixNano()
+			fmt.Printf("cosmos-sdk hanldermsg slice time interval :%d\n", timeEnd-timeBegin)
 		} else {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "can't route message %+v", msg)
 		}
+		timeEnd := time.Now().UnixNano()
+		fmt.Printf("cosmos-sdk handle msg time interval:%d\n", timeEnd-timeBegin)
 
 		if err != nil {
 			return nil, sdkerrors.Wrapf(err, "failed to execute message; message index: %d", i)
@@ -771,6 +802,8 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 		txMsgData.Data = append(txMsgData.Data, &sdk.MsgData{MsgType: sdk.MsgTypeURL(msg), Data: msgResult.Data})
 		msgLogs = append(msgLogs, sdk.NewABCIMessageLog(uint32(i), msgResult.Log, msgEvents))
 	}
+	timeEnd := time.Now().UnixNano()
+	fmt.Printf("cosmos-sdk runMsg point time interval :%d\n", timeEnd-timeBegin)
 
 	data, err := proto.Marshal(txMsgData)
 	if err != nil {

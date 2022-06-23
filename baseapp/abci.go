@@ -1,7 +1,9 @@
 package baseapp
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -266,6 +268,10 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 	gInfo := sdk.GasInfo{}
 	resultStr := "successful"
 
+	hasher := md5.New()
+	hasher.Write(req.Tx)
+	fmt.Printf("-----------------deliverTx begin is %s\n", hex.EncodeToString(hasher.Sum(nil)))
+
 	defer func() {
 		telemetry.IncrCounter(1, "tx", "count")
 		telemetry.IncrCounter(1, "tx", resultStr)
@@ -273,11 +279,17 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		telemetry.SetGauge(float32(gInfo.GasWanted), "tx", "gas", "wanted")
 	}()
 
+	timeBegin := time.Now().UnixNano()
 	gInfo, result, anteEvents, err := app.runTx(runTxModeDeliver, req.Tx)
 	if err != nil {
 		resultStr = "failed"
 		return sdkerrors.ResponseDeliverTxWithEvents(err, gInfo.GasWanted, gInfo.GasUsed, anteEvents, app.trace)
 	}
+	timeEnd := time.Now().UnixNano()
+	fmt.Printf("cosmos-sdk: deliverTx cost time interval: %d\n", timeEnd-timeBegin)
+	hasher = md5.New()
+	hasher.Write(req.Tx)
+	fmt.Printf("-----------------deliverTx end is %s\n", hex.EncodeToString(hasher.Sum(nil)))
 
 	return abci.ResponseDeliverTx{
 		GasWanted: int64(gInfo.GasWanted), // TODO: Should type accept unsigned ints?

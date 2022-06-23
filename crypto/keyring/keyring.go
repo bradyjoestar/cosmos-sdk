@@ -758,6 +758,9 @@ func (ks keystore) writeInfo(info Info) error {
 	key := infoKeyBz(info.GetName())
 	serializedInfo := marshalInfo(info)
 
+	fmt.Println(string(key))
+	fmt.Println(addrHexKeyAsString(info.GetAddress()))
+
 	exists, err := ks.existsInDb(info)
 	if err != nil {
 		return err
