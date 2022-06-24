@@ -637,7 +637,6 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 		defer consumeBlockGas()
 	}
 
-	timeBegin = time.Now().UnixNano()
 	tx, err := app.txDecoder(txBytes)
 	if err != nil {
 		return sdk.GasInfo{}, nil, nil, err
@@ -647,8 +646,6 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 	if err := validateBasicTxMsgs(msgs); err != nil {
 		return sdk.GasInfo{}, nil, nil, err
 	}
-	timeEnd = time.Now().UnixNano()
-	fmt.Printf("cosmos sdk: tx pre handler time interval:%d\n", timeEnd-timeBegin)
 
 	timeBegin = time.Now().UnixNano()
 	if app.anteHandler != nil {
@@ -693,6 +690,7 @@ func (app *BaseApp) runTx(mode runTxMode, txBytes []byte) (gInfo sdk.GasInfo, re
 
 		timeSubBegin2 := time.Now().UnixNano()
 		msCache.Write()
+		msCache.GetStoreType()
 		timeSubEnd2 := time.Now().UnixNano()
 		fmt.Printf("cosmos sdk: tx pre handler time interval:%d\n", timeSubEnd2-timeSubBegin2)
 		anteEvents = events.ToABCIEvents()

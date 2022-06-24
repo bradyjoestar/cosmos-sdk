@@ -3,6 +3,7 @@ package cachemulti
 import (
 	"fmt"
 	"io"
+	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -137,8 +138,12 @@ func (cms Store) GetStoreType() types.StoreType {
 // Write calls Write on each underlying store.
 func (cms Store) Write() {
 	cms.db.Write()
-	for _, store := range cms.stores {
+
+	for key, store := range cms.stores {
+		timeBegin := time.Now().UnixNano()
 		store.Write()
+		timeEnd := time.Now().UnixNano()
+		fmt.Printf("cms store write: %d,key is %s\n", timeEnd-timeBegin, key)
 	}
 }
 
