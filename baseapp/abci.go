@@ -286,7 +286,8 @@ func (app *BaseApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx 
 		return sdkerrors.ResponseDeliverTxWithEvents(err, gInfo.GasWanted, gInfo.GasUsed, anteEvents, app.trace)
 	}
 	timeEnd := time.Now().UnixNano()
-	fmt.Printf("cosmos-sdk: deliverTx cost time interval: %d\n", timeEnd-timeBegin)
+	fmt.Printf("cosmos-sdk: deliverTx cost time interval: %d ns  %f s\n", timeEnd-timeBegin,
+		float64(timeEnd-timeBegin)/1000000000)
 	hasher = md5.New()
 	hasher.Write(req.Tx)
 	fmt.Printf("-----------------deliverTx end is %s\n", hex.EncodeToString(hasher.Sum(nil)))

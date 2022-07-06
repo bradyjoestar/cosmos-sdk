@@ -106,7 +106,7 @@ func (store *Store) Write() {
 		return
 	}
 
-	//defer telemetry.MeasureSince(time.Now(), "store", "cachekv", "write")
+	defer telemetry.MeasureSince(time.Now(), "store", "cachekv", "write")
 
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.

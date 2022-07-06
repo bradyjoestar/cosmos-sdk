@@ -2,10 +2,8 @@ package cachemulti
 
 import (
 	"fmt"
-	"io"
-	"time"
-
 	dbm "github.com/tendermint/tm-db"
+	"io"
 
 	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	"github.com/cosmos/cosmos-sdk/store/dbadapter"
@@ -139,11 +137,8 @@ func (cms Store) GetStoreType() types.StoreType {
 func (cms Store) Write() {
 	cms.db.Write()
 
-	for key, store := range cms.stores {
-		timeBegin := time.Now().UnixNano()
+	for _, store := range cms.stores {
 		store.Write()
-		timeEnd := time.Now().UnixNano()
-		fmt.Printf("cms store write: %d,key is %s\n", timeEnd-timeBegin, key)
 	}
 }
 
